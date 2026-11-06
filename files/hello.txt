@@ -3,3 +3,5 @@ Deployed to AVD C:\appl
 
 An updated version of the hello.txt file
 with the most recent update.
+
+with additional command: "az vm start"
