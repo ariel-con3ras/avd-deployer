@@ -30,8 +30,11 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Run the Virtual machine
+        run: az vm start
+        
       - name: Copy file to C:\appl on the AVD session host
-        run: |
+        run:
           B64=$(base64 -w0 "$SOURCE_FILE")
           NAME=$(basename "$SOURCE_FILE")
           az vm run-command invoke \
