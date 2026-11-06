@@ -1,0 +1,48 @@
+name: Deploy file to AVD
+
+on:
+  workflow_dispatch:          # manual "Run workflow" button
+  push:
+    branches: [main]
+    paths: ['files/**']       # also runs when anything in files/ changes
+
+permissions:
+  id-token: write             # needed for OIDC login to Azure
+  contents: read
+
+env:
+  RESOURCE_GROUP: RG-Test
+  VM_NAME: avd-0
+  SOURCE_FILE: files/hello.txt
+  TARGET_DIR: C:\appl
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Copy file to C:\appl on the AVD session host
+        run: |
+          B64=$(base64 -w0 "$SOURCE_FILE")
+          NAME=$(basename "$SOURCE_FILE")
+          az vm run-command invoke \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$VM_NAME" \
+            --command-id RunPowerShellScript \
+            --scripts 'param($b64, $name, $dir)
+              New-Item -ItemType Directory -Force -Path $dir | Out-Null
+              $path = Join-Path $dir $name
+              [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($b64))
+              Write-Output "Written: $path"
+              Get-ChildItem $dir | Format-Table Name, Length, LastWriteTime' \
+            --parameters "b64=$B64" "name=$NAME" "dir=$TARGET_DIR" \
+            --query "value[].message" -o tsv
