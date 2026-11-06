@@ -30,7 +30,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Run the Virtual machine
+      - name: Start the VM
         run: az vm start --resource-group "$RESOURCE_GROUP" --name "$VM_NAME"
 
       - name: Copy file to C:\appl on the AVD session host
@@ -49,3 +49,7 @@ jobs:
               Get-ChildItem $dir | Format-Table Name, Length, LastWriteTime' \
             --parameters "b64=$B64" "name=$NAME" "dir=$TARGET_DIR" \
             --query "value[].message" -o tsv
+
+      - name: Stop (deallocate) the VM
+        if: always()          # runs even if a previous step failed
+        run: az vm deallocate --resource-group "$RESOURCE_GROUP" --name "$VM_NAME" --no-wait
